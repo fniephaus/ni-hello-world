@@ -1,0 +1,51 @@
+name: 'build-run'
+
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    name: ${{ matrix.version }} + JDK${{ matrix.java-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        version: [latest, nightly]
+        java-version: ['11']
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: fniephaus/setup-graalvm@main
+        with:
+          version: ${{ matrix.version }}
+          java-version: ${{ matrix.java-version }}
+          components: native-image
+
+      - name: Build and run HelloWorld.java
+        run: |
+          javac HelloWorld.java
+          native-image HelloWorld
+          ./helloworld
+        if: runner.os != 'Windows'
+
+      - name: Build and run HelloWorld.java on Windows
+        run: |
+          javac.exe HelloWorld.java
+          native-image.cmd HelloWorld
+          ./helloworld.exe
+        if: runner.os == 'Windows'
+      
+      - uses: actions/upload-artifact@v2
+        with:
+          name: helloworld-${{ matrix.os }}-${{ matrix.version }}
+          path: helloworld*
